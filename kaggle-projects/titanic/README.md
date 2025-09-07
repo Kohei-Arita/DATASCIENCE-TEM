@@ -58,8 +58,8 @@ titanic/
 import os
 from google.colab import userdata
 os.environ[\"WANDB_API_KEY\"] = userdata.get('WANDB_API_KEY')  # 任意
-os.environ[\"KAGGLE_USERNAME\"] = \"koheiari\"
-os.environ[\"KAGGLE_KEY\"] = \"2f78e74cc916ba697e7d9c3853f68922\"
+os.environ[\"KAGGLE_USERNAME\"] = userdata.get('KAGGLE_USERNAME')
+os.environ[\"KAGGLE_KEY\"] = userdata.get('KAGGLE_KEY')
 ```
 
 ### 2. データ準備

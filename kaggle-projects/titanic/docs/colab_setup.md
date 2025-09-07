@@ -53,8 +53,8 @@ os.environ["KAGGLE_KEY"] = userdata.get('KAGGLE_KEY')
 ```python
 # セキュリティリスクあり - 本番では使用しない
 import os
-os.environ["KAGGLE_USERNAME"] = "koheiari"
-os.environ["KAGGLE_KEY"] = "2f78e74cc916ba697e7d9c3853f68922"
+os.environ["KAGGLE_USERNAME"] = "YOUR_KAGGLE_USERNAME"
+os.environ["KAGGLE_KEY"] = "YOUR_KAGGLE_KEY"
 ```
 
 ## 📁 ファイル構造の確認
