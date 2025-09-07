@@ -142,9 +142,16 @@ def load_and_preprocess_data(cfg):
     # 特徴量とターゲットを分離
     feature_cols = cfg['features']['use']
     
-    X = train_data[feature_cols]
+    X = train_data[feature_cols].copy()
     y = train_data[cfg['data']['target']]
-    X_test = test_data[feature_cols]
+    X_test = test_data[feature_cols].copy()
+    
+    # カテゴリカル変数をLightGBM用にカテゴリ型に変換
+    categorical_cols = cfg['data']['categorical']
+    for col in categorical_cols:
+        if col in X.columns:
+            X[col] = X[col].astype('category')
+            X_test[col] = X_test[col].astype('category')
     
     return X, y, X_test, train_data, test_data
 
@@ -154,6 +161,14 @@ X, y, X_test, train_data, test_data = load_and_preprocess_data(cfg)
 print(f"学習データ形状: {X.shape}")
 print(f"テストデータ形状: {X_test.shape}")
 print(f"特徴量: {list(X.columns)}")
+
+# デバッグ: データ型を確認
+print(f"\nデータ型:")
+print(X.dtypes)
+print(f"\nカテゴリカル変数: {cfg['data']['categorical']}")
+for col in cfg['data']['categorical']:
+    if col in X.columns:
+        print(f"{col}: {X[col].dtype}")
 
 # %%
 # CV分割を作成・保存
