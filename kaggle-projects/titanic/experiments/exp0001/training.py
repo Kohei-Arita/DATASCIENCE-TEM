@@ -215,16 +215,19 @@ for fold, (train_idx, valid_idx) in enumerate(skf.split(X, y)):
     y_train, y_valid = y.iloc[train_idx], y.iloc[valid_idx]
     
     # LightGBM Dataset作成
+    # カテゴリカル特徴量のインデックスを取得
+    categorical_features = [col for col in cfg['data']['categorical'] if col in X.columns]
+    
     train_dataset = lgb.Dataset(
         X_train, 
         label=y_train,
-        categorical_feature=cfg['data']['categorical']
+        categorical_feature=categorical_features
     )
     
     valid_dataset = lgb.Dataset(
         X_valid, 
         label=y_valid,
-        categorical_feature=cfg['data']['categorical'],
+        categorical_feature=categorical_features,
         reference=train_dataset
     )
     
