@@ -39,7 +39,7 @@ class SafeSubprocessExecutor:
     # Whitelist of allowed commands
     ALLOWED_COMMANDS = {
         'git': ['rev-parse', 'branch', 'status', 'log'],
-        'kaggle': ['competitions', 'datasets', 'kernels'],
+        'kaggle': ['competitions', 'datasets', 'kernels', 'download', '-c', '-f', '-p', '--force'],
         'python': ['-m', '-c'],
         'pip': ['install', 'list', 'show'],
         'chmod': ['600', '644', '755']
@@ -48,7 +48,7 @@ class SafeSubprocessExecutor:
     # Maximum execution time for different command types
     TIMEOUT_LIMITS = {
         'git': 10,
-        'kaggle': 300,  # 5 minutes for downloads
+        'kaggle': 1800,  # 30 minutes for large downloads
         'python': 60,
         'pip': 120,
         'chmod': 5

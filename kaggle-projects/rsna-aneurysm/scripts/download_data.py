@@ -41,14 +41,45 @@ def ensure_kaggle_credentials(logger: logging.Logger) -> None:
     logger.warning("Kaggle credentials not found. Set KAGGLE_USERNAME and KAGGLE_KEY or place kaggle.json under ~/.kaggle/")
 
 
-def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) -> bool:
+def download_essential_files(competition: str, output_path: Path, logger: logging.Logger) -> bool:
+    """Download essential CSV files first (quick download)"""
+    essential_files = ["train.csv", "train_localizers.csv", "test.csv", "sample_submission.csv"]
+    
+    for file_name in essential_files:
+        logger.info(f"Downloading essential file: {file_name}")
+        try:
+            args = [
+                "competitions",
+                "download", 
+                "-c", 
+                competition,
+                "-f",
+                file_name,
+                "-p", 
+                str(output_path),
+                "--force"
+            ]
+            result = run_kaggle_command(args, cwd=output_path, timeout=60)
+            
+            if result.returncode == 0:
+                logger.info(f"Successfully downloaded {file_name}")
+            else:
+                logger.warning(f"Could not download {file_name}: {result.stderr}")
+        except Exception as e:
+            logger.warning(f"Failed to download {file_name}: {e}")
+    
+    return True
+
+
+def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True, files_only: bool = False) -> bool:
     """
-    Kaggle APIでデータをダウンロード (secure version)
+    Kaggle APIでデータをダウンロード (secure version with selective download)
     
     Args:
         competition: Kaggle competition name (must be alphanumeric with dashes)
         output_dir: Output directory path
         unzip: Whether to unzip downloaded files
+        files_only: If True, download only essential CSV files (fast)
         
     Returns:
         bool: Success status
@@ -73,35 +104,52 @@ def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) 
     logger.info(f"Downloading competition='{competition}' to '{output_dir}'")
 
     try:
-        # Use secure kaggle command execution
+        # First, download essential CSV files quickly
+        download_essential_files(competition, output_path, logger)
+        
+        # If only essential files requested, return early
+        if files_only:
+            files = [f.name for f in output_path.iterdir()]
+            logger.info(f"Essential files downloaded: {files}")
+            return True
+        
+        # Download large image files with extended timeout
+        logger.info("Downloading large image datasets (this may take 10+ minutes)...")
         args = [
             "competitions",
             "download",
             "-c",
             competition,
+            "-f",
+            "train_images.zip",
             "-p",
             str(output_path),
+            "--force"
         ]
 
-        result = run_kaggle_command(args, cwd=output_path)
+        # Use extended timeout for large files (30 minutes)
+        result = run_kaggle_command(args, cwd=output_path, timeout=1800)
 
         if result.returncode != 0:
-            logger.error(f"Download failed: {result.stderr}")
-            return False
+            logger.error(f"Large file download failed: {result.stderr}")
+            logger.info("Essential files are still available for initial development")
+            return True  # Still return True since we have essential files
 
-        logger.info("Download completed successfully")
+        logger.info("Large file download completed successfully")
 
         if unzip:
             import zipfile
 
             zip_files = list(output_path.glob("*.zip"))
             if not zip_files:
-                logger.warning("No zip files found to extract. Perhaps files are already extracted.")
-            for zip_file in zip_files:
-                logger.info(f"Extracting {zip_file}")
-                with zipfile.ZipFile(zip_file, "r") as zip_ref:
-                    zip_ref.extractall(output_path)
-                zip_file.unlink()
+                logger.warning("No zip files found to extract.")
+            else:
+                for zip_file in zip_files:
+                    logger.info(f"Extracting {zip_file} (this may take several minutes)...")
+                    with zipfile.ZipFile(zip_file, "r") as zip_ref:
+                        zip_ref.extractall(output_path)
+                    logger.info(f"Extraction completed for {zip_file}")
+                    zip_file.unlink()
 
         files = [f.name for f in output_path.iterdir()]
         logger.info(f"Files in output dir: {files}")
@@ -109,7 +157,11 @@ def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) 
         return True
 
     except subprocess.TimeoutExpired:
-        logger.error("Download timed out")
+        logger.error("Download timed out - but essential CSV files may be available")
+        files = [f.name for f in output_path.iterdir()]
+        if files:
+            logger.info(f"Available files: {files}")
+            return True
         return False
     except FileNotFoundError:
         logger.error("'kaggle' CLI not found. Install with: pip install kaggle")
@@ -124,9 +176,15 @@ def main():
     parser.add_argument("--competition", required=True, help="Competition name (e.g., rsna-intracranial-aneurysm-detection)")
     parser.add_argument("--output", required=True, help="Output directory")
     parser.add_argument("--no-unzip", action="store_true", help="Do not unzip downloaded files")
+    parser.add_argument("--files-only", action="store_true", help="Download only essential CSV files (fast, no images)")
 
     args = parser.parse_args()
-    success = download_kaggle_data(args.competition, args.output, unzip=not args.no_unzip)
+    success = download_kaggle_data(
+        args.competition, 
+        args.output, 
+        unzip=not args.no_unzip,
+        files_only=args.files_only
+    )
     sys.exit(0 if success else 1)
 
 
