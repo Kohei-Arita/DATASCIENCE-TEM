@@ -479,19 +479,41 @@ def create_metadata_summary(dicom_dir: Union[str, Path], output_file: Optional[U
 
 
 if __name__ == "__main__":
-    # Test DICOM processing
-    print("DICOM Utilities Test")
-    print("=" * 50)
+    import argparse
 
-    # Initialize processor
-    processor = DICOMProcessor(default_window_center=40, default_window_width=80, target_size=(512, 512))
+    parser = argparse.ArgumentParser(description="DICOM utilities CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    print("DICOM processor initialized")
-    print(f"Default window: C={processor.default_window_center}, W={processor.default_window_width}")
-    print(f"Target size: {processor.target_size}")
+    # Subcommand: convert-images
+    convert_parser = subparsers.add_parser("convert-images", help="Convert DICOM files to images (png/jpg/npy)")
+    convert_parser.add_argument("--input", required=True, help="Input directory containing DICOM files")
+    convert_parser.add_argument("--output", required=True, help="Output directory for converted images")
+    convert_parser.add_argument("--format", choices=["png", "jpg", "npy"], default="png", help="Output format")
+    convert_parser.add_argument("--window-center", type=float, default=None, help="Window center (HU)")
+    convert_parser.add_argument("--window-width", type=float, default=None, help="Window width (HU)")
+    convert_parser.add_argument("--target-size", nargs=2, type=int, metavar=("H", "W"), default=[512, 512], help="Target size H W")
 
-    # Test metadata extractor
-    extractor = DICOMMetadataExtractor()
-    print(f"Metadata fields to extract: {len(extractor.metadata_fields)}")
+    # Subcommand: extract-metadata
+    meta_parser = subparsers.add_parser("extract-metadata", help="Extract DICOM metadata to CSV and print summary")
+    meta_parser.add_argument("--input", required=True, help="Input directory containing DICOM files")
+    meta_parser.add_argument("--output", required=False, help="Output CSV path for metadata")
 
-    print("\nAll DICOM utilities ready!")
+    args = parser.parse_args()
+
+    if args.command == "convert-images":
+        stats = convert_dicom_to_image(
+            input_dir=args.input,
+            output_dir=args.output,
+            output_format=args.format,
+            window_center=args.window_center,
+            window_width=args.window_width,
+            target_size=(args.target_size[0], args.target_size[1]),
+        )
+        # Print short summary for DVC logs
+        print({k: v for k, v in stats.items() if k in ["total_files", "successful", "failed", "success_rate", "output_dir", "output_format"]})
+
+    elif args.command == "extract-metadata":
+        df = create_metadata_summary(args.input, output_file=args.output)
+        if args.output:
+            print(f"Saved metadata CSV: {args.output}")
+        print(f"Metadata rows: {len(df)}")
