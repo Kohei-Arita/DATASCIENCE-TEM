@@ -12,7 +12,9 @@ import pickle
 import random
 import logging
 import subprocess
+import shlex
 import numpy as np
+from .security_utils import run_git_command
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -154,31 +156,41 @@ def load_pickle(pickle_path: Union[str, Path]) -> Any:
 
 def get_git_hash() -> str:
     """
-    Get current git commit hash
+    Get current git commit hash using secure subprocess execution
 
     Returns:
         Git commit hash (short form)
+        
+    Raises:
+        subprocess.CalledProcessError: If git command fails
+        FileNotFoundError: If git is not installed
     """
 
     try:
-        result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+        result = run_git_command(['rev-parse', 'HEAD'])
         return result.stdout.strip()[:8]
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+        logging.getLogger(__name__).warning(f"Failed to get git hash: {e}")
         return "unknown"
 
 
 def get_git_branch() -> str:
     """
-    Get current git branch name
+    Get current git branch name using secure subprocess execution
 
     Returns:
         Git branch name
+        
+    Raises:
+        subprocess.CalledProcessError: If git command fails
+        FileNotFoundError: If git is not installed
     """
 
     try:
-        result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, check=True)
+        result = run_git_command(['branch', '--show-current'])
         return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+        logging.getLogger(__name__).warning(f"Failed to get git branch: {e}")
         return "unknown"
 
 

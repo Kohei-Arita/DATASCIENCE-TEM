@@ -9,8 +9,11 @@ Usage:
 import argparse
 import subprocess
 import sys
+import shlex
 from pathlib import Path
 import logging
+import os
+from .security_utils import run_kaggle_command, validate_competition_name, validate_file_path
 
 
 def setup_logging():
@@ -39,18 +42,39 @@ def ensure_kaggle_credentials(logger: logging.Logger) -> None:
 
 
 def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) -> bool:
-    """Kaggle APIでデータをダウンロード"""
+    """
+    Kaggle APIでデータをダウンロード (secure version)
+    
+    Args:
+        competition: Kaggle competition name (must be alphanumeric with dashes)
+        output_dir: Output directory path
+        unzip: Whether to unzip downloaded files
+        
+    Returns:
+        bool: Success status
+        
+    Raises:
+        SecurityError: If inputs fail validation
+        FileNotFoundError: If kaggle CLI is not installed
+    """
     logger = setup_logging()
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Secure input validation
+    try:
+        competition = validate_competition_name(competition)
+        output_path = validate_file_path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        logger.error(f"Input validation failed: {e}")
+        return False
 
     ensure_kaggle_credentials(logger)
 
     logger.info(f"Downloading competition='{competition}' to '{output_dir}'")
 
     try:
-        cmd = [
-            "kaggle",
+        # Use secure kaggle command execution
+        args = [
             "competitions",
             "download",
             "-c",
@@ -59,7 +83,7 @@ def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) 
             str(output_path),
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = run_kaggle_command(args, cwd=output_path)
 
         if result.returncode != 0:
             logger.error(f"Download failed: {result.stderr}")
@@ -84,11 +108,14 @@ def download_kaggle_data(competition: str, output_dir: str, unzip: bool = True) 
 
         return True
 
+    except subprocess.TimeoutExpired:
+        logger.error("Download timed out")
+        return False
     except FileNotFoundError:
         logger.error("'kaggle' CLI not found. Install with: pip install kaggle")
         return False
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Download failed: {e}")
         return False
 
 

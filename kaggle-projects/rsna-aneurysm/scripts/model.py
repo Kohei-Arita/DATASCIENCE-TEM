@@ -18,13 +18,40 @@ logger = logging.getLogger(__name__)
 
 class AneurysmClassifier(nn.Module):
     """
-    Base classifier for aneurysm detection
+    Deep learning classifier for intracranial aneurysm detection from medical images
 
-    Features:
-    - Multiple backbone architectures
-    - Flexible head configurations
-    - Attention mechanisms
-    - Multi-scale features
+    A flexible PyTorch model supporting multiple CNN architectures (ResNet, EfficientNet, 
+    Vision Transformers, etc.) with medical imaging optimizations. Designed specifically 
+    for binary classification of brain aneurysms from DICOM images.
+
+    Key Features:
+        - Multiple backbone architectures with ImageNet pretraining
+        - Configurable classifier heads with dropout and batch normalization
+        - Optional attention mechanisms (CBAM, SE, ECA)
+        - Support for multi-scale input processing
+        - Comprehensive parameter counting and model introspection
+        - Medical imaging domain adaptations
+
+    Architecture Overview:
+        Input Image → Backbone CNN → [Optional Attention] → Classifier Head → Prediction
+        
+    Supported Backbones:
+        - ResNet family (resnet18, resnet50, etc.)
+        - EfficientNet family (efficientnet-b0 through b7)
+        - Vision Transformers (vit_base_patch16_224, etc.)
+        - ConvNeXt models
+        - Swin Transformers
+        - Any timm model (fallback)
+        
+    Example:
+        >>> model = AneurysmClassifier(
+        ...     architecture='resnet50',
+        ...     num_classes=1,
+        ...     pretrained=True,
+        ...     use_attention=True,
+        ...     attention_type='cbam'
+        ... )
+        >>> prediction = model(batch_images)  # Shape: (batch_size, 1)
     """
 
     def __init__(

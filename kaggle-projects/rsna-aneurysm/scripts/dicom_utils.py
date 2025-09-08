@@ -50,13 +50,33 @@ class DICOMProcessor:
 
     def load_dicom(self, dicom_path: Union[str, Path]) -> Dict[str, Any]:
         """
-        Load DICOM file with error handling
+        Load and preprocess DICOM file with comprehensive error handling
+
+        This method loads a DICOM medical image, extracts pixel data and metadata,
+        applies medical imaging preprocessing (windowing, normalization), and
+        returns a structured result with both processed and raw data.
 
         Args:
-            dicom_path: Path to DICOM file
+            dicom_path: Path to DICOM file (.dcm or .dicom extension)
 
         Returns:
-            Dictionary containing image array and metadata
+            Dict containing:
+                - image (np.ndarray): Preprocessed image array (H, W, C) as uint8
+                - raw_image (np.ndarray): Original pixel data as float32
+                - metadata (Dict[str, Any]): Extracted DICOM tags and info
+                - dicom (pydicom.Dataset): Original DICOM dataset object
+                - success (bool): True if loading succeeded
+                - error (str, optional): Error message if loading failed
+
+        Raises:
+            No exceptions raised - errors are captured and returned in result dict
+            
+        Example:
+            >>> processor = DICOMProcessor(default_window_center=40, default_window_width=80)
+            >>> result = processor.load_dicom('scan.dcm')
+            >>> if result['success']:
+            ...     image = result['image']  # Ready for ML model
+            ...     metadata = result['metadata']  # Patient info, scan params
         """
         try:
             dcm = pydicom.dcmread(str(dicom_path))
@@ -84,7 +104,24 @@ class DICOMProcessor:
             }
 
     def _extract_pixel_data(self, dcm: pydicom.Dataset) -> np.ndarray:
-        """Extract and preprocess pixel data from DICOM"""
+        """
+        Extract and preprocess raw pixel data from DICOM dataset
+        
+        Applies medical imaging transformations including:
+        - Modality LUT (rescale slope/intercept for Hounsfield Units)
+        - VOI LUT (Value of Interest windowing if present in DICOM)
+        - Data type conversion to float32 for processing
+        
+        Args:
+            dcm: PyDICOM Dataset object with pixel data
+            
+        Returns:
+            np.ndarray: Preprocessed pixel array as float32
+            
+        Note:
+            Handles both linear and non-linear transformations safely
+            with fallback to manual calculation if LUT application fails.
+        """
 
         # Get pixel array
         image = dcm.pixel_array.copy()
@@ -113,7 +150,30 @@ class DICOMProcessor:
         return image
 
     def _extract_metadata(self, dcm: pydicom.Dataset) -> Dict[str, Any]:
-        """Extract relevant metadata from DICOM"""
+        """
+        Extract comprehensive metadata from DICOM dataset
+        
+        Extracts patient information, study details, technical parameters,
+        and imaging settings essential for medical image analysis and
+        patient data management.
+        
+        Args:
+            dcm: PyDICOM Dataset object
+            
+        Returns:
+            Dict[str, Any]: Metadata dictionary with keys including:
+                - Patient info: PatientID, PatientAge, PatientSex
+                - Study info: StudyInstanceUID, StudyDate, StudyTime
+                - Series info: SeriesInstanceUID, SeriesNumber, SeriesDescription
+                - Image info: SOPInstanceUID, InstanceNumber
+                - Technical: Rows, Columns, PixelSpacing, SliceThickness
+                - Window params: WindowCenter, WindowWidth
+                - Acquisition: Modality, Manufacturer, ManufacturerModelName
+                
+        Note:
+            Uses safe attribute access with defaults for missing DICOM tags.
+            All values are converted to Python native types for JSON serialization.
+        """
 
         metadata = {}
 
