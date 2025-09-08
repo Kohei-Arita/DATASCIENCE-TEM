@@ -1,0 +1,92 @@
+# RSNA Aneurysm 学習設定
+
+# エポック・バッチ設定
+epochs: 100               # 最大エポック数
+batch_size: 16            # バッチサイズ (GPU メモリに応じて調整)
+accumulate_grad_batches: 2  # 勾配累積バッチ数 (実効バッチサイズ = batch_size * accumulate_grad_batches)
+
+# 最適化設定
+optimizer:
+  type: "AdamW"           # Adam, AdamW, SGD, RMSprop
+  lr: 1e-4                # 学習率
+  weight_decay: 1e-4      # 重み減衰
+  amsgrad: false          # AMSGrad (Adamのみ)
+
+# 学習率スケジューラ
+scheduler:
+  type: "CosineAnnealingWarmRestarts"  # StepLR, ReduceLROnPlateau, CosineAnnealingLR, CosineAnnealingWarmRestarts
+  T_0: 10                 # 最初のリスタート間隔
+  T_mult: 2               # リスタート間隔の乗数
+  eta_min: 1e-6           # 最小学習率
+  
+# ウォームアップ
+warmup:
+  use_warmup: true        # ウォームアップの使用
+  warmup_epochs: 5        # ウォームアップエポック数
+  warmup_factor: 0.1      # 初期学習率係数
+
+# 損失関数
+loss:
+  type: "BCEWithLogitsLoss"  # BCEWithLogitsLoss, FocalLoss, BCELoss
+  pos_weight: null        # 正例重み (不均衡データ対応、自動計算)
+  label_smoothing: 0.0    # ラベルスムージング
+  
+# Focal Loss設定（loss.type="FocalLoss"の場合）
+focal_loss:
+  alpha: 1.0              # クラス重み
+  gamma: 2.0              # フォーカシングパラメータ
+  
+# Early Stopping
+early_stopping:
+  enabled: true           # Early Stoppingの使用
+  patience: 15            # 改善しないエポック数の閾値
+  monitor: "val_auc"      # 監視する指標
+  mode: "max"             # max (精度系) or min (損失系)
+  min_delta: 0.001        # 改善とみなす最小変化量
+
+# モデルチェックポイント
+checkpoint:
+  save_best_only: true    # ベストモデルのみ保存
+  monitor: "val_auc"      # 監視指標
+  mode: "max"             # 最大値で保存
+  save_last: true         # 最終エポックも保存
+  
+# Mixed Precision Training
+mixed_precision:
+  enabled: true           # 自動混合精度の使用
+  
+# GPU設定
+device: "cuda"            # cuda, cpu
+multi_gpu: false          # マルチGPU使用
+gpu_ids: [0]              # 使用GPU ID
+
+# データローダー設定
+dataloader:
+  num_workers: 4          # データローダーのワーカー数
+  pin_memory: true        # メモリピニング
+  drop_last: true         # 不完全バッチの破棄
+  
+# 正則化
+regularization:
+  dropout: 0.5            # ドロップアウト率
+  weight_decay: 1e-4      # 重み減衰
+  grad_clip_norm: 1.0     # 勾配クリッピング値
+
+# 再現性設定
+reproducibility:
+  seed: 42                # 全体の乱数シード
+  deterministic: false    # 完全な決定論的実行（性能低下あり）
+  benchmark: true         # cuDNNベンチマーク最適化
+
+# ログ設定
+logging:
+  log_every_n_steps: 50   # ログ出力間隔
+  save_predictions: true  # 予測結果保存
+  
+# 評価指標
+metrics:
+  - "accuracy"
+  - "auc" 
+  - "f1"
+  - "precision"
+  - "recall"

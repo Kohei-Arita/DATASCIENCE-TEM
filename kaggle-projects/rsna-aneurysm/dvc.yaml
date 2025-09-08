@@ -1,0 +1,118 @@
+# DVC Pipeline for RSNA Aneurysm Detection
+# Data Version Control and Processing Pipeline
+
+stages:
+  # Stage 1: Download raw competition data
+  download_data:
+    cmd: python -m scripts.download_data --competition rsna-intracranial-aneurysm-detection --output data/raw
+    deps:
+      - scripts/download_data.py
+    outs:
+      - data/raw/train.csv
+      - data/raw/test.csv
+      - data/raw/sample_submission.csv
+      - data/raw/train_images/
+      - data/raw/test_images/
+    
+  # Stage 2: Extract DICOM metadata  
+  extract_metadata:
+    cmd: python -m scripts.dicom_utils extract-metadata --input data/raw/train_images --output data/processed/train_metadata.csv
+    deps:
+      - scripts/dicom_utils.py
+      - data/raw/train_images/
+    outs:
+      - data/processed/train_metadata.csv
+      
+  # Stage 3: Preprocess DICOM images to PNG/NPY
+  preprocess_images:
+    cmd: >
+      python -m scripts.dicom_utils convert-images 
+      --input data/raw/train_images 
+      --output data/processed/train_images_512 
+      --format png 
+      --target-size 512 512
+      --window-center 40 
+      --window-width 80
+    deps:
+      - scripts/dicom_utils.py
+      - data/raw/train_images/
+    outs:
+      - data/processed/train_images_512/
+    params:
+      - configs/data.yaml:
+        - image.target_size
+        - dicom.window_center  
+        - dicom.window_width
+        
+  # Stage 4: Create train/validation metadata
+  create_metadata:
+    cmd: python -m scripts.create_metadata --train-csv data/raw/train.csv --metadata data/processed/train_metadata.csv --output data/processed/train_processed.csv
+    deps:
+      - scripts/create_metadata.py
+      - data/raw/train.csv
+      - data/processed/train_metadata.csv
+    outs:
+      - data/processed/train_processed.csv
+      
+  # Stage 5: Create cross-validation splits
+  create_cv_splits:
+    cmd: python -m scripts.make_folds --config configs/cv.yaml --data data/processed/train_processed.csv --output data/processed/cv_splits.csv
+    deps:
+      - scripts/make_folds.py
+      - data/processed/train_processed.csv
+      - configs/cv.yaml
+    outs:
+      - data/processed/cv_splits.csv
+    params:
+      - configs/cv.yaml:
+        - n_folds
+        - seed  
+        - cv_method
+        
+  # Stage 6: Data quality audit
+  audit_data:
+    cmd: python -m scripts.data_audit --train data/processed/train_processed.csv --cv-splits data/processed/cv_splits.csv --output data/processed/data_audit_report.json
+    deps:
+      - scripts/data_audit.py
+      - data/processed/train_processed.csv
+      - data/processed/cv_splits.csv
+    outs:
+      - data/processed/data_audit_report.json
+      
+# Plots for data analysis
+plots:
+  - data/processed/train_metadata.csv:
+      x: Rows
+      y: Columns
+      title: "Image Size Distribution"
+      
+  - data/processed/train_processed.csv:
+      x: PatientAge
+      title: "Patient Age Distribution"
+      
+# Metrics tracking
+metrics:
+  - data/processed/data_audit_report.json:
+      cache: false
+
+# Parameters from config files      
+params:
+  - configs/data.yaml
+  - configs/cv.yaml
+
+# Artifacts to track
+artifacts:
+  raw_data:
+    path: data/raw/
+    type: dataset
+    desc: "Raw RSNA competition data from Kaggle"
+    
+  processed_data:
+    path: data/processed/
+    type: dataset  
+    desc: "Preprocessed images and metadata for training"
+    
+  cv_splits:
+    path: data/processed/cv_splits.csv
+    type: table
+    desc: "Cross-validation splits with patient-level grouping"

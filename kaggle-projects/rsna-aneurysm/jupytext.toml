@@ -1,0 +1,29 @@
+# Jupytext Configuration for RSNA Aneurysm Project
+# Synchronize Jupyter notebooks with Python scripts
+
+# Default formats for notebooks
+formats = "ipynb,py:percent"
+
+# File patterns to include/exclude
+include = [
+    "experiments/*/training.ipynb",
+    "experiments/*/evaluation.ipynb", 
+    "experiments/*/inference.ipynb"
+]
+
+exclude = [
+    "**/.ipynb_checkpoints/**",
+    "**/checkpoints/**"
+]
+
+# Notebook metadata to preserve
+notebook_metadata_filter = "all,-jupytext.text_representation.jupytext_version"
+
+# Cell metadata to preserve  
+cell_metadata_filter = "all,-execution"
+
+# Split cells at markdown headers
+split_at_heading = true
+
+# Comment magics in Python scripts
+comment_magics = "script"

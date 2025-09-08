@@ -1,0 +1,56 @@
+# RSNA Aneurysm モデル設定
+
+# ベースアーキテクチャ
+architecture: "resnet50"  # resnet50, efficientnet-b0, vit_small_patch16_224
+
+# 事前学習モデル
+pretrained: true          # ImageNet事前学習済み重みを使用
+freeze_backbone: false    # バックボーン層の重みを凍結するか
+
+# モデル出力設定
+num_classes: 1            # 二値分類 (シグモイド出力)
+final_activation: "sigmoid"  # sigmoid, softmax, none
+
+# ヘッド層設定
+head:
+  dropout: 0.5            # ドロップアウト率
+  hidden_dim: 512         # FC層の隠れ次元数
+  num_layers: 2           # FC層の数
+  batch_norm: true        # バッチ正規化の使用
+
+# Attention機構（オプション）
+attention:
+  use_attention: false    # Attention機構の使用
+  attention_type: "cbam"  # cbam, se, eca
+  reduction_ratio: 16     # SE/CBAM用の削減比
+
+# マルチスケール対応
+multiscale:
+  use_multiscale: false   # マルチスケール入力
+  scales: [0.8, 1.0, 1.2] # スケール倍率
+
+# 推論設定  
+inference:
+  tta_enabled: true       # Test Time Augmentation
+  tta_transforms: 
+    - "horizontal_flip"
+    - "vertical_flip"  
+  ensemble_method: "mean" # mean, voting
+
+# モデルサイズ対応
+model_variants:
+  tiny:
+    architecture: "efficientnet-b0"
+    hidden_dim: 256
+  small: 
+    architecture: "resnet34"
+    hidden_dim: 256
+  base:
+    architecture: "resnet50" 
+    hidden_dim: 512
+  large:
+    architecture: "resnet101"
+    hidden_dim: 1024
+  extra_large:
+    architecture: "efficientnet-b4"
+    hidden_dim: 1024

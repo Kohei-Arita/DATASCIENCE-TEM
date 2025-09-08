@@ -1,0 +1,52 @@
+# RSNA Intracranial Aneurysm データ設定
+
+# データパス設定
+paths:
+  raw_dir: ../data/raw
+  processed_dir: ../data/processed
+  external_dir: ../data/external
+  dicom_dir: raw/rsna-intracranial-aneurysm-detection
+
+# 画像設定
+image:
+  target_size: [512, 512]  # (H, W) - 最終的な入力画像サイズ
+  channels: 3              # RGB (DICOMから変換)
+  pixel_spacing: null      # mm/pixel (自動取得)
+  
+# DICOM前処理
+dicom:
+  window_center: null      # HU値 - Hounsfield Unit中心値（自動またはDICOMタグから）
+  window_width: null       # HU値 - 窓幅（自動またはDICOMタグから）
+  rescale_intercept: null  # DICOMタグから自動取得
+  rescale_slope: null      # DICOMタグから自動取得
+  
+# 正規化設定  
+normalization:
+  method: imagenet         # imagenet, custom, none
+  mean: [0.485, 0.456, 0.406]  # ImageNet統計量
+  std: [0.229, 0.224, 0.225]   # ImageNet統計量
+  
+# データフィルタリング
+filtering:
+  min_image_size: [256, 256]   # 最小画像サイズ (除外条件)
+  max_image_size: [2048, 2048] # 最大画像サイズ (除外条件)
+  exclude_corrupted: true      # 破損DICOM除外
+  
+# ラベル設定
+labels:
+  target_column: "aneurysm"    # 目的変数列名
+  positive_class: 1            # 陽性クラス (動脈瘤あり)
+  negative_class: 0            # 陰性クラス (動脈瘤なし)
+  class_weights: null          # クラス重み (自動計算)
+
+# メタデータ活用
+metadata:
+  use_patient_info: false      # 患者情報の利用
+  use_study_info: true         # 検査情報の利用  
+  use_series_info: true        # シリーズ情報の利用
+  features:                    # メタデータ特徴量
+    - "StudyInstanceUID"
+    - "SeriesInstanceUID" 
+    - "ImagePositionPatient"
+    - "SliceThickness"
+    - "PixelSpacing"

@@ -1,0 +1,49 @@
+# RSNA Aneurysm 交差検証設定
+
+# 基本CV設定
+n_folds: 5                # Fold数
+seed: 42                  # 乱数シード
+shuffle: true             # データシャッフル
+
+# CV方式
+cv_method: "stratified_group_kfold"  # stratified_kfold, group_kfold, stratified_group_kfold
+
+# グループ分割設定（データリーク防止）
+grouping:
+  group_column: "PatientID"  # グループ化する列名
+  ensure_patient_separation: true  # 同一患者が複数Foldに分散しないよう保証
+  
+# 層化設定
+stratification:
+  target_column: "aneurysm"      # 層化対象の目的変数
+  maintain_class_balance: true   # クラス比率維持
+  
+# バリデーション戦略  
+validation:
+  method: "holdout"             # holdout, nested_cv
+  holdout_ratio: 0.2            # ホールドアウト比率（ネストCVしない場合）
+  
+# 時系列考慮（もし日時情報がある場合）
+temporal:
+  use_temporal_split: false     # 時系列分割の使用
+  time_column: null             # 時刻列名
+  train_months: 24              # 訓練期間（月）
+  valid_months: 6               # 検証期間（月）
+
+# CV品質チェック
+quality_check:
+  min_samples_per_fold: 100     # Fold当たり最小サンプル数
+  max_class_imbalance: 0.3      # 許容するクラス不均衡度
+  check_data_leakage: true      # データリークチェック
+
+# Advanced CV戦略
+advanced:
+  use_repeated_cv: false        # Repeated Cross-Validation
+  n_repeats: 3                  # 繰り返し回数
+  use_nested_cv: false          # ネストCV（ハイパーパラメータ選択用）
+  
+# CV結果保存
+output:
+  save_fold_info: true          # Fold情報をCSVで保存
+  fold_column: "fold"           # Fold列名
+  oof_predictions_file: "oof_predictions.csv"  # OOF予測保存ファイル名

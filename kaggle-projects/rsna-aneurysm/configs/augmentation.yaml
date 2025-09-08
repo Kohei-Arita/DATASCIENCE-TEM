@@ -1,0 +1,129 @@
+# RSNA Aneurysm データ拡張設定 (Albumentations)
+
+# 訓練時拡張
+train_transforms:
+  # 基本的な幾何変換
+  - name: "HorizontalFlip"
+    params:
+      p: 0.5
+      
+  - name: "VerticalFlip" 
+    params:
+      p: 0.3
+      
+  - name: "Rotate"
+    params:
+      limit: 15           # ±15度回転
+      p: 0.5
+      
+  - name: "ShiftScaleRotate"
+    params:
+      shift_limit: 0.1    # ±10%シフト
+      scale_limit: 0.1    # ±10%スケール
+      rotate_limit: 10    # ±10度回転
+      p: 0.5
+      
+  # 医療画像特有の変換
+  - name: "RandomBrightnessContrast"
+    params:
+      brightness_limit: 0.1  # 明度変更
+      contrast_limit: 0.1    # コントラスト変更
+      p: 0.5
+      
+  - name: "CLAHE"         # Contrast Limited Adaptive Histogram Equalization
+    params:
+      clip_limit: 2.0
+      tile_grid_size: [8, 8]
+      p: 0.3
+      
+  - name: "GridDistortion"
+    params:
+      num_steps: 3
+      distort_limit: 0.1
+      p: 0.3
+      
+  - name: "ElasticTransform"
+    params:
+      alpha: 30
+      sigma: 5
+      alpha_affine: 5
+      p: 0.2
+      
+  # ノイズ・品質劣化
+  - name: "GaussNoise"
+    params:
+      var_limit: [10, 50]
+      p: 0.2
+      
+  - name: "ISONoise" 
+    params:
+      color_shift: [0.01, 0.05]
+      intensity: [0.1, 0.5]
+      p: 0.2
+      
+  - name: "MotionBlur"
+    params:
+      blur_limit: 3
+      p: 0.2
+      
+  - name: "GaussianBlur"
+    params:
+      blur_limit: 3
+      p: 0.1
+      
+  # カットアウト系
+  - name: "CoarseDropout"
+    params:
+      max_holes: 8
+      max_height: 32
+      max_width: 32
+      min_holes: 1 
+      min_height: 8
+      min_width: 8
+      p: 0.3
+
+# 検証・テスト時変換 (最小限)
+valid_transforms: []       # 正規化のみ (基本変換で適用)
+
+# TTA用変換
+tta_transforms:
+  - name: "HorizontalFlip"
+    params:
+      p: 1.0
+      
+  - name: "VerticalFlip"
+    params: 
+      p: 1.0
+      
+  - name: "Rotate"
+    params:
+      limit: 10
+      p: 1.0
+
+# 基本前処理 (常に適用)
+basic_transforms:
+  - name: "Resize"
+    params:
+      height: 512
+      width: 512
+      interpolation: 1     # INTER_LINEAR
+      
+  - name: "Normalize"
+    params:
+      mean: [0.485, 0.456, 0.406]  # ImageNet統計
+      std: [0.229, 0.224, 0.225]   # ImageNet統計
+      max_pixel_value: 255.0
+      
+  - name: "ToTensorV2"     # PyTorchテンソルに変換
+
+# 拡張強度設定
+augmentation_strength:
+  light: 0.3               # 軽い拡張適用確率
+  medium: 0.5              # 中程度拡張適用確率  
+  strong: 0.7              # 強い拡張適用確率
+
+# 医療画像特有の設定
+medical_specific:
+  preserve_aspect_ratio: true    # アスペクト比保持
+  maintain_pixel_intensity: true # ピクセル強度の医学的意味保持
+  avoid_extreme_distortion: true # 極端な歪み回避

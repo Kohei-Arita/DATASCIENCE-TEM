@@ -1,0 +1,101 @@
+# 実験スナップショット - exp0001 (Baseline)
+# この1ファイルで実験を完全再現
+
+experiment:
+  id: exp0001
+  description: "RSNA Aneurysm Baseline - ResNet50 with basic augmentation"
+  date: "2025-09-08"
+  hypothesis: "ResNet50 + ImageNet pretrained で医療画像分類のベースライン性能を確立"
+
+# データ設定 (configs/data.yaml から継承・上書き)
+data:
+  image_size: [512, 512]
+  channels: 3
+  normalization:
+    method: imagenet
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+  target_column: "aneurysm"
+  
+# モデル設定 (configs/model.yaml から継承・上書き)  
+model:
+  architecture: "resnet50"
+  pretrained: true
+  num_classes: 1
+  dropout: 0.5
+  hidden_dim: 512
+  
+# 学習設定 (configs/train.yaml から継承・上書き)
+train:
+  epochs: 100
+  batch_size: 16
+  accumulate_grad_batches: 2
+  optimizer:
+    type: "AdamW"
+    lr: 1e-4
+    weight_decay: 1e-4
+  scheduler:
+    type: "CosineAnnealingWarmRestarts"
+    T_0: 10
+    eta_min: 1e-6
+  loss:
+    type: "BCEWithLogitsLoss"
+    pos_weight: null
+  early_stopping:
+    enabled: true
+    patience: 15
+    monitor: "val_auc"
+    
+# CV設定 (configs/cv.yaml から継承・上書き)
+cv:
+  n_folds: 5
+  seed: 42
+  cv_method: "stratified_group_kfold"
+  group_column: "PatientID"
+  
+# データ拡張設定 (configs/augmentation.yaml から継承・上書き)
+augmentation:
+  strength: "light"      # light拡張でベースライン確立
+  train_transforms:
+    - HorizontalFlip: {p: 0.5}
+    - VerticalFlip: {p: 0.3}
+    - Rotate: {limit: 10, p: 0.5}
+    - RandomBrightnessContrast: {brightness_limit: 0.1, contrast_limit: 0.1, p: 0.5}
+    - CLAHE: {p: 0.3}
+
+# 実験環境
+environment:
+  device: "cuda"
+  mixed_precision: true
+  seed: 42
+  deterministic: false
+
+# パス設定
+paths:
+  data_dir: "../../data"
+  raw_data: "../../data/raw"
+  processed_data: "../../data/processed"
+  model_save_dir: "./model"
+  submission_dir: "./submissions"
+  
+# ログ・トラッキング設定
+logging:
+  wandb:
+    project: "rsna-aneurysm-detection"
+    entity: null
+    name: "exp0001-baseline-resnet50"
+    tags: ["baseline", "resnet50", "light_aug"]
+    notes: "Baseline experiment with ResNet50"
+  save_oof: true
+  save_predictions: true
+  
+# Kaggle設定
+kaggle:
+  competition: "rsna-intracranial-aneurysm-detection"
+  submission_message: "exp0001 {git_sha} - ResNet50 baseline"
+  
+# 期待結果・目標
+targets:
+  cv_auc_target: 0.75      # 初回目標CV AUC
+  lb_target: 0.73          # 初回目標LB AUC
+  baseline_established: true
