@@ -4,7 +4,7 @@ Utility modules for RSNA Intracranial Aneurysm Detection
 
 Modules:
 - dataset: PyTorch Dataset classes
-- model: Model architectures 
+- model: Model architectures
 - transforms: Image augmentation and preprocessing
 - utils: General utilities and helper functions
 - metrics: Evaluation metrics and analysis
