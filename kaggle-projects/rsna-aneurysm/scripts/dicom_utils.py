@@ -126,6 +126,10 @@ class DICOMProcessor:
         # Get pixel array
         image = dcm.pixel_array.copy()
 
+        # Handle multi-frame DICOM by selecting a representative frame
+        if hasattr(image, "ndim") and image.ndim == 3:
+            image = self._select_frame(dcm, image)
+
         # Convert to float for processing
         image = image.astype(np.float32)
 
@@ -148,6 +152,33 @@ class DICOMProcessor:
                 logger.warning(f"Failed to apply VOI LUT: {e}")
 
         return image
+
+    def _select_frame(self, dcm: pydicom.Dataset, image_3d: np.ndarray) -> np.ndarray:
+        """Select a representative frame from a multi-frame DICOM.
+
+        Strategy (simple and robust):
+        1) If NumberOfFrames exists, try to pick middle frame.
+        2) If InstanceNumber is present and within bounds, use it as 1-based index.
+        3) Fallback to first frame.
+        """
+        try:
+            num_frames = int(getattr(dcm, "NumberOfFrames", image_3d.shape[0]))
+        except Exception:
+            num_frames = image_3d.shape[0]
+
+        # Try InstanceNumber (1-based)
+        try:
+            inst = int(getattr(dcm, "InstanceNumber", 0))
+        except Exception:
+            inst = 0
+
+        if 1 <= inst <= num_frames:
+            idx = inst - 1
+        else:
+            # Middle frame as robust default
+            idx = max(0, min(num_frames // 2, num_frames - 1))
+
+        return image_3d[idx].astype(np.float32)
 
     def _extract_metadata(self, dcm: pydicom.Dataset) -> Dict[str, Any]:
         """
@@ -208,6 +239,7 @@ class DICOMProcessor:
         metadata["WindowWidth"] = getattr(dcm, "WindowWidth", None)
         metadata["RescaleSlope"] = getattr(dcm, "RescaleSlope", 1)
         metadata["RescaleIntercept"] = getattr(dcm, "RescaleIntercept", 0)
+        metadata["PhotometricInterpretation"] = getattr(dcm, "PhotometricInterpretation", None)
 
         # Modality and acquisition
         metadata["Modality"] = getattr(dcm, "Modality", "Unknown")
@@ -238,6 +270,10 @@ class DICOMProcessor:
 
         # Normalize image
         image = self._normalize_image(image)
+
+        # Invert for MONOCHROME1 if required (after normalization to uint8 range)
+        if str(metadata.get("PhotometricInterpretation", "")).upper() == "MONOCHROME1":
+            image = 255 - image
 
         # Resize if needed
         if self.target_size is not None:
@@ -461,8 +497,8 @@ def convert_dicom_to_image(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find DICOM files
-    dicom_files = list(input_dir.glob("*.dcm")) + list(input_dir.glob("*.dicom"))
+    # Find DICOM files (recursive to cover nested patient/study/series folders)
+    dicom_files = list(input_dir.rglob("*.dcm")) + list(input_dir.rglob("*.dicom"))
 
     if not dicom_files:
         logger.error(f"No DICOM files found in {input_dir}")
