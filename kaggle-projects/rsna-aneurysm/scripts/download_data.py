@@ -43,7 +43,7 @@ def ensure_kaggle_credentials(logger: logging.Logger) -> None:
 
 def download_essential_files(competition: str, output_path: Path, logger: logging.Logger) -> bool:
     """Download essential CSV files first (quick download)"""
-    essential_files = ["train.csv", "train_localizers.csv", "test.csv", "sample_submission.csv"]
+    essential_files = ["train.csv", "train_localizers.csv"]
     
     for file_name in essential_files:
         logger.info(f"Downloading essential file: {file_name}")
@@ -68,6 +68,29 @@ def download_essential_files(competition: str, output_path: Path, logger: loggin
         except Exception as e:
             logger.warning(f"Failed to download {file_name}: {e}")
     
+    # Try non-essential files best-effort (no failure)
+    for optional_file in ["test.csv", "sample_submission.csv"]:
+        logger.info(f"(optional) Trying to download: {optional_file}")
+        try:
+            args = [
+                "competitions",
+                "download",
+                "-c",
+                competition,
+                "-f",
+                optional_file,
+                "-p",
+                str(output_path),
+                "--force"
+            ]
+            result = run_kaggle_command(args, cwd=output_path, timeout=60)
+            if result.returncode == 0:
+                logger.info(f"Successfully downloaded optional file: {optional_file}")
+            else:
+                logger.warning(f"Optional file not available: {optional_file}")
+        except Exception as e:
+            logger.warning(f"Optional download failed for {optional_file}: {e}")
+
     return True
 
 
